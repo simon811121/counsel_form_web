@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, StreamingResponse, JSONResponse, HTM
 from pydantic import BaseModel, Field
 from typing import List, Optional, Union
 from pypdf import PdfReader, PdfWriter
-from pypdf.generic import NameObject, NumberObject
+from pypdf.generic import NameObject, NumberObject, BooleanObject
 from fastapi.middleware.cors import CORSMiddleware
 
 # 建立 FastAPI 應用
@@ -210,8 +210,17 @@ async def fill_pdf_endpoint(data: CounselFormData):
     writer.update_page_form_field_values(
         writer.pages[0],
         pdf_data,
-        auto_regenerate=True
+        auto_regenerate=False
     )
+
+    # 設定 /NeedAppearances 為 True，強制 PDF 閱讀器在開啟時重新產生表單外觀
+    # 這樣可以利用閱讀器的字體庫來顯示中文，解決 pypdf 無法渲染中文的問題
+    if "/AcroForm" in writer.root_object:
+        acroform = writer.root_object["/AcroForm"]
+        # 如果是參照物件 (IndirectObject)，需要取得實際物件
+        if hasattr(acroform, "get_object"):
+            acroform = acroform.get_object()
+        acroform[NameObject("/NeedAppearances")] = BooleanObject(True)
 
     # 將結果寫入記憶體串流，而非實體檔案
     output_stream = io.BytesIO()
