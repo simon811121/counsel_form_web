@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>諮商紀錄表</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      @page {
+        size: A4;
+        margin: 1.5cm;
+      }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white; padding: 0; }
+      #app { box-shadow: none; max-width: 100%; padding: 0; margin: 0; }
+      /* 強制顯示背景顏色 (針對 checkbox/radio) */
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+      .print-only {
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .print-only td {
+        padding: 3px 6px;
+      }
+      .print-only .grid {
+        gap: 2px 8px;
+      }
+    }
+    .print-only {
+      display: none;
+      /* 指定接近 PDF 的官方文件字體 */
+      font-family: '標楷體', 'BiauKai', 'DFKai-SB', 'KaiTi', serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8 font-sans">
+
+  <div id="app" class="max-w-3xl mx-auto bg-white p-6 md:p-10 rounded-lg shadow-md">
+    <h1 class="text-2xl font-bold mb-6 text-center border-b pb-4 no-print">諮商紀錄表 (線上填寫版)</h1>
+
+    <!-- 輸入介面 (列印時隱藏) -->
+    <div @submit.prevent="submitForm" class="no-print">
+
+      <!-- 當事人基本資料 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 border-b pb-6">
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">姓名</label>
+          <input v-model="form.name" type="text" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">生理性別</label>
+          <select v-model="form.gender" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">請選擇</option>
+            <option value="男">男</option>
+            <option value="女">女</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">出生年月日</label>
+          <input v-model="form.dob" type="date" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">身分證字號</label>
+          <input v-model="form.idNumber" type="text" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-gray-700 font-bold mb-2">地址</label>
+          <input v-model="form.address" type="text" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
+
+      <!-- 諮商日期與次數 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 border-b pb-6">
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">諮商日期</label>
+          <input v-model="form.date" type="date" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">晤談次數</label>
+          <div class="flex items-center">
+            <span class="mr-2">第</span>
+            <input v-model="form.sessionNumber" type="number" min="1" class="w-20 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+            <span class="ml-2">次晤談</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 諮商形式 -->
+      <div class="mb-6 border-b pb-6">
+        <label class="block text-gray-700 font-bold mb-2">諮商形式</label>
+        <div class="flex flex-col gap-2">
+          <label class="inline-flex items-center">
+            <input type="radio" v-model="form.format" value="01.個別諮商" class="form-radio text-blue-600">
+            <span class="ml-2">01.個別諮商</span>
+          </label>
+          <label class="inline-flex items-center">
+            <input type="radio" v-model="form.format" value="02.伴侶/家族諮商" class="form-radio text-blue-600">
+            <span class="ml-2">02.伴侶/家族諮商</span>
+          </label>
+          <label class="inline-flex items-center">
+            <input type="radio" v-model="form.format" value="03.親子/兒童諮商" class="form-radio text-blue-600">
+            <span class="ml-2">03.親子/兒童諮商</span>
+          </label>
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="inline-flex items-center">
+              <input type="radio" v-model="form.format" value="04.通訊心理諮商" class="form-radio text-blue-600">
+              <span class="ml-2">04.通訊心理諮商</span>
+            </label>
+            <!-- 通訊諮商子選項 -->
+            <div v-if="form.format === '04.通訊心理諮商'" class="ml-6 flex gap-3 bg-gray-50 p-2 rounded">
+              <label class="inline-flex items-center"><input type="radio" v-model="form.teleCounselingType" value="個別" class="form-radio text-blue-400"><span class="ml-1 text-sm">個別</span></label>
+              <label class="inline-flex items-center"><input type="radio" v-model="form.teleCounselingType" value="伴侶" class="form-radio text-blue-400"><span class="ml-1 text-sm">伴侶</span></label>
+              <label class="inline-flex items-center"><input type="radio" v-model="form.teleCounselingType" value="家族" class="form-radio text-blue-400"><span class="ml-1 text-sm">家族</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 個案主訴 -->
+      <div class="mb-6 border-b pb-6">
+        <label class="block text-gray-700 font-bold mb-2">個案主訴 (可多選)</label>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div v-for="item in complaintOptions" :key="item" class="flex flex-col">
+            <label class="inline-flex items-center">
+            <input type="checkbox" v-model="form.complaints" :value="item" class="form-checkbox text-blue-600 rounded">
+            <span class="ml-2">{{ item }}</span>
+          </label>
+
+            <!-- 家庭議題子選項 -->
+            <div v-if="item.includes('18.家庭議題') && form.complaints.includes(item)" class="ml-6 mt-1 flex flex-wrap gap-2 text-sm text-gray-600">
+               <label class="inline-flex items-center"><input type="radio" v-model="form.familyIssueType" value="家庭" class="form-radio text-blue-400"><span class="ml-1">家庭</span></label>
+               <label class="inline-flex items-center"><input type="radio" v-model="form.familyIssueType" value="子女教養" class="form-radio text-blue-400"><span class="ml-1">子女教養</span></label>
+               <label class="inline-flex items-center"><input type="radio" v-model="form.familyIssueType" value="夫妻" class="form-radio text-blue-400"><span class="ml-1">夫妻</span></label>
+               <label class="inline-flex items-center"><input type="radio" v-model="form.familyIssueType" value="親子" class="form-radio text-blue-400"><span class="ml-1">親子</span></label>
+            </div>
+            <!-- 其他輸入框 -->
+            <div v-if="item.includes('19.其他') && form.complaints.includes(item)" class="ml-6 mt-1">
+              <input v-model="form.complaintOther" type="text" placeholder="請說明" class="w-full border-b border-gray-300 focus:outline-none focus:border-blue-500 text-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 治療目標 -->
+      <div class="mb-6 border-b pb-6">
+        <label class="block text-gray-700 font-bold mb-2">治療目標 (可多選)</label>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div v-for="item in goalOptions" :key="item">
+            <label class="inline-flex items-center">
+              <input type="checkbox" v-model="form.goals" :value="item" class="form-checkbox text-blue-600 rounded">
+              <span class="ml-2">{{ item }}</span>
+            </label>
+            <div v-if="item.includes('10.其他') && form.goals.includes(item)" class="ml-6 mt-1">
+              <input v-model="form.goalOther" type="text" placeholder="請說明" class="w-full border-b border-gray-300 focus:outline-none focus:border-blue-500 text-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 處置規劃 -->
+      <div class="mb-6 border-b pb-6">
+        <label class="block text-gray-700 font-bold mb-2">處置規劃 (可多選)</label>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div v-for="item in planOptions" :key="item">
+            <label class="inline-flex items-center">
+              <input type="checkbox" v-model="form.plans" :value="item" class="form-checkbox text-blue-600 rounded">
+              <span class="ml-2">{{ item }}</span>
+            </label>
+            <div v-if="item.includes('11.其他') && form.plans.includes(item)" class="ml-6 mt-1">
+              <input v-model="form.planOther" type="text" placeholder="請說明" class="w-full border-b border-gray-300 focus:outline-none focus:border-blue-500 text-sm">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 內容摘要 -->
+      <div class="mb-6 border-b pb-6">
+        <label class="block text-gray-700 font-bold mb-2">內容摘要</label>
+        <textarea v-model="form.summary" rows="4" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="請輸入諮商摘要..."></textarea>
+      </div>
+
+      <!-- 簽章 -->
+      <div class="mb-6">
+        <label class="block text-gray-700 font-bold mb-2">心理師簽章</label>
+        <input v-model="form.signature" type="text" class="w-full md:w-1/2 border-b-2 border-gray-400 p-2 focus:outline-none focus:border-blue-600 bg-gray-50" placeholder="請輸入姓名或簽名">
+      </div>
+
+      <div class="mt-8 flex gap-4 no-print">
+        <button type="button" @click="submitForm" :disabled="loading" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded hover:bg-blue-700 transition duration-200 disabled:bg-gray-400">
+          <span v-if="loading">正在產生 PDF...</span>
+          <span v-else>完成輸入並產生 PDF</span>
+        </button>
+        <button type="button" @click="printForm" class="w-full bg-gray-500 text-white font-bold py-3 px-4 rounded hover:bg-gray-600 transition duration-200">
+          列印 / 另存 PDF (舊版)
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 列印專用介面 (平常隱藏，列印時顯示) -->
+    <div class="print-only font-serif text-sm">
+      <h1 class="text-2xl font-bold text-center mb-2">諮商紀錄表</h1>
+      <table class="w-full border-collapse border border-black">
+        <!-- 當事人基本資料 -->
+        <tr>
+          <td rowspan="3" class="border border-black p-2 text-center font-bold w-24 bg-gray-100">
+            當事人<br>基本資料<br>
+            <span class="font-normal text-xs">(可依需求增列)</span>
+          </td>
+          <td class="border border-black p-2 w-1/2">
+            <span class="font-bold">姓名：</span> {{ form.name }}
+          </td>
+          <td class="border border-black p-2 w-1/2">
+            <span class="font-bold">生理性別：</span> {{ form.gender }}
+          </td>
+        </tr>
+        <tr>
+          <td class="border border-black p-2">
+            <span class="font-bold">出生年月日：</span> {{ form.dob }}
+          </td>
+          <td class="border border-black p-2">
+            <span class="font-bold">身分證字號：</span> {{ form.idNumber }}
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" class="border border-black p-2">
+            <span class="font-bold">地址：</span> {{ form.address }}
+          </td>
+        </tr>
+
+        <!-- 諮商日期 -->
+        <tr>
+          <td class="border border-black p-2 text-center font-bold bg-gray-100">諮商日期</td>
+          <td colspan="2" class="border border-black p-2">
+            <div class="flex gap-8">
+              <span>{{ formattedDate }}</span>
+              <span>。第 <span class="px-4">{{ form.sessionNumber || '__' }}</span> 次晤談</span>
+            </div>
+          </td>
+        </tr>
+
+        <!-- 諮商形式 -->
+        <tr>
+          <td class="border border-black p-2 text-center font-bold bg-gray-100">諮商形式</td>
+          <td colspan="2" class="border border-black p-2">
+            <div class="flex flex-wrap gap-x-4 gap-y-1">
+              <span v-for="opt in ['01.個別諮商', '02.伴侶/家族諮商', '03.親子/兒童諮商']">
+                <span class="text-lg">{{ form.format === opt ? '☑' : '☐' }}</span> {{ opt }}
+              </span>
+              <span>
+                <span class="text-lg">{{ form.format === '04.通訊心理諮商' ? '☑' : '☐' }}</span> 04.通訊心理諮商
+                <span v-if="form.format === '04.通訊心理諮商'">
+                  (<span v-for="t in ['個別', '伴侶', '家族']" :key="t" class="mx-1">
+                    {{ form.teleCounselingType === t ? '●' : '○' }}{{ t }}
+                  </span>)
+                </span>
+              </span>
+            </div>
+          </td>
+        </tr>
+
+        <!-- 個案主訴 -->
+        <tr>
+          <td class="border border-black p-2 text-center font-bold bg-gray-100">個案主訴</td>
+          <td colspan="2" class="border border-black p-2">
+            <div class="grid grid-cols-3 gap-y-1 gap-x-2">
+              <div v-for="item in complaintOptions" :key="item" class="flex items-start">
+                <span class="text-lg mr-1 leading-none">{{ form.complaints.includes(item) ? '☑' : '☐' }}</span>
+                <span>
+                  {{ item }}
+                  <span v-if="item.includes('18.家庭議題') && form.complaints.includes(item)" class="ml-1">
+                    (<span v-for="t in ['家庭', '子女教養', '夫妻', '親子']" :key="t" class="mx-1">
+                      {{ form.familyIssueType === t ? '●' : '○' }}{{ t }}
+                    </span>)
+                  </span>
+                  <span v-if="item.includes('19.其他') && form.complaints.includes(item)">
+                    : {{ form.complaintOther }}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- 治療目標 -->
+        <tr>
+          <td class="border border-black p-2 text-center font-bold bg-gray-100">治療目標</td>
+          <td colspan="2" class="border border-black p-2">
+            <div class="grid grid-cols-3 gap-y-1 gap-x-2">
+              <div v-for="item in goalOptions" :key="item" class="flex items-start">
+                <span class="text-lg mr-1 leading-none">{{ form.goals.includes(item) ? '☑' : '☐' }}</span>
+                <span>
+                  {{ item }}
+                  <span v-if="item.includes('10.其他') && form.goals.includes(item)">: {{ form.goalOther }}</span>
+                </span>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- 處置規劃 -->
+        <tr>
+          <td class="border border-black p-2 text-center font-bold bg-gray-100">處置規劃</td>
+          <td colspan="2" class="border border-black p-2">
+            <div class="grid grid-cols-3 gap-y-1 gap-x-2">
+              <div v-for="item in planOptions" :key="item" class="flex items-start">
+                <span class="text-lg mr-1 leading-none">{{ form.plans.includes(item) ? '☑' : '☐' }}</span>
+                <span>
+                  {{ item }}
+                  <span v-if="item.includes('11.其他') && form.plans.includes(item)">: {{ form.planOther }}</span>
+                </span>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- 內容摘要 -->
+        <tr>
+          <td class="border border-black p-2 text-center font-bold bg-gray-100 h-80">內容摘要</td>
+          <td colspan="2" class="border border-black p-2 align-top whitespace-pre-wrap">{{ form.summary }}</td>
+        </tr>
+
+        <!-- 簽章 -->
+        <tr>
+          <td colspan="3" class="border border-black p-4 text-right">
+            <span class="font-bold text-lg">心理師簽章：</span>
+            <span class="border-b border-black px-8 inline-block min-w-[150px] text-center">{{ form.signature }}</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, computed } = Vue;
+
+    createApp({
+      setup() {
+        // 定義表單資料結構 (這就是未來要傳給後端的 JSON)
+        const form = ref({
+          name: '',
+          gender: '',
+          dob: '1990-01-01',
+          idNumber: '',
+          address: '',
+          date: '',
+          sessionNumber: '',
+          format: '',
+          teleCounselingType: '', // 通訊諮商子選項
+          complaints: [],
+          familyIssueType: '', // 家庭議題子選項
+          complaintOther: '',
+          goals: [],
+          goalOther: '',
+          plans: [],
+          planOther: '',
+          summary: '',
+          signature: ''
+        });
+
+        // 定義個案主訴的選項資料
+        const complaintOptions = ref([
+          '01.經濟問題', '02.就業工作', '03.生涯規劃', '04.醫療健康的心理問題',
+          '05.自我認識', '06.情感困擾', '07.行為困擾', '08.重大失落或生活變故',
+          '09.一般資訊', '10.學習問題', '11.人際關係', '12.壓力與情緒困擾',
+          '13.家庭暴力', '14.自殺／傷', '15.性侵害', '16.性議題',
+          '17.死亡/悲傷', '18.家庭議題', '19.其他'
+        ]);
+
+        // 定義治療目標選項
+        const goalOptions = ref([
+          '01.建立關係', '02.聚焦工作目標', '03.提高自我覺察',
+          '04.降低挫折', '05.梳理過去經驗', '06.改善人際關係',
+          '07.提升情緒管理能力', '08.增加因應能力策略',
+          '09.提升環境適應技巧', '10.其他'
+        ]);
+
+        // 定義處置規劃選項
+        const planOptions = ref([
+          '01.目標設定', '02.同理與支持', '03.經驗整合', '04.內在聚焦',
+          '05.自我探索', '06.賦權與賦能', '07.情感宣洩', '08.重新框架',
+          '09.訊息提供', '10.結案準備', '11.其他'
+        ]);
+
+        // 將西元日期轉換為民國年格式
+        const formattedDate = computed(() => {
+          if (!form.value.date) {
+            return '民國 ___ 年 ___ 月 ___ 日';
+          }
+          const d = new Date(form.value.date);
+          // ROC year = AD year - 1911
+          const year = d.getFullYear() - 1911;
+          const month = d.getMonth() + 1;
+          const day = d.getDate();
+          return `民國 ${year} 年 ${month} 月 ${day} 日`;
+        });
+
+        const loading = ref(false);
+
+        // 呼叫後端 API 產生 PDF
+        const submitForm = async () => {
+          loading.value = true;
+          try {
+            // 建立副本並確保數值欄位轉換為字串，避免後端驗證錯誤 (422)
+            const formData = { ...form.value };
+            formData.sessionNumber = String(formData.sessionNumber || '');
+
+            const response = await fetch('/fill_pdf', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) {
+              throw new Error(`伺服器錯誤: ${response.status} ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            // 從 response header 取得檔名或使用預設值
+            const contentDisposition = response.headers.get('content-disposition');
+            let filename = 'counsel_record_filled.pdf';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1];
+                }
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+          } catch (error) {
+            console.error('產生 PDF 時發生錯誤:', error);
+            alert('無法產生 PDF，請檢查後端服務是否已啟動，或查看主控台以獲取更多資訊。');
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        // 呼叫瀏覽器列印功能
+        const printForm = () => {
+          window.print();
+        };
+
+        return {
+          form,
+          complaintOptions,
+          goalOptions,
+          planOptions,
+          submitForm,
+          printForm,
+          formattedDate,
+          loading,
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
