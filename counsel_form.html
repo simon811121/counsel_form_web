@@ -184,12 +184,6 @@
         <textarea v-model="form.summary" rows="4" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="請輸入諮商摘要..."></textarea>
       </div>
 
-      <!-- 簽章 -->
-      <div class="mb-6">
-        <label class="block text-gray-700 font-bold mb-2">心理師簽章</label>
-        <input v-model="form.signature" type="text" class="w-full md:w-1/2 border-b-2 border-gray-400 p-2 focus:outline-none focus:border-blue-600 bg-gray-50" placeholder="請輸入姓名或簽名">
-      </div>
-
       <div class="mt-8 flex gap-4 no-print">
         <button type="button" @click="submitForm" :disabled="loading" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded hover:bg-blue-700 transition duration-200 disabled:bg-gray-400">
           <span v-if="loading">正在產生 PDF...</span>
@@ -320,14 +314,6 @@
         <tr>
           <td class="border border-black p-2 text-center font-bold bg-gray-100 h-80">內容摘要</td>
           <td colspan="2" class="border border-black p-2 align-top whitespace-pre-wrap">{{ form.summary }}</td>
-        </tr>
-
-        <!-- 簽章 -->
-        <tr>
-          <td colspan="3" class="border border-black p-4 text-right">
-            <span class="font-bold text-lg">心理師簽章：</span>
-            <span class="border-b border-black px-8 inline-block min-w-[150px] text-center">{{ form.signature }}</span>
-          </td>
         </tr>
       </table>
     </div>
