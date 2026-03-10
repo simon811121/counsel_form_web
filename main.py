@@ -234,7 +234,7 @@ async def fill_pdf_endpoint(data: CounselFormData):
         headers={"Content-Disposition": 'attachment; filename="counsel_record_filled.pdf"'}
     )
 
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def read_root():
     """直接回傳前端 HTML 頁面"""
     with open("counsel_form.html", "r", encoding="utf-8") as f:
